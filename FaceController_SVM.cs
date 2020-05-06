@@ -4,10 +4,10 @@ using UnityEngine;
 using System;
 
 
-public class FaceController_gyro : MonoBehaviour
+public class FaceController_SVM : MonoBehaviour
 {
 
-    public GameObject Serial_Data;
+    public GameObject UDP;
     public GameObject VReye;
     public Camera mainCamera;
     //歩行
@@ -23,6 +23,7 @@ public class FaceController_gyro : MonoBehaviour
     private float yaw_angle;
     private float pitch_angle;
     private float roll_angle;
+    private int svm_label;
     //ローパスフィルタ
     private float filter_gain = 0.75f;      //default: 0.75
     private float pre_yaw = 0.0f;
@@ -68,8 +69,9 @@ public class FaceController_gyro : MonoBehaviour
     void Update()
     {
         //シリアル通信から頭部角度取得
-        yaw_angle = Serial_Data.GetComponent<receive_data>().yaw_val;
-        pitch_angle = Serial_Data.GetComponent<receive_data>().pitch_val;
+        yaw_angle = UDP.GetComponent<UDP>().yaw_val;
+        pitch_angle = UDP.GetComponent<UDP>().pitch_val;
+        svm_label = UDP.GetComponent<UDP>().SVM_label;
         //Debug.Log(yaw_angle);
 
         //ローパスフィルタ
@@ -122,9 +124,9 @@ public class FaceController_gyro : MonoBehaviour
         //各種処理
         if (f1_flag == true)
         {
-            //1-1. 局所回転：あり（Yaw＋Pitch） / 大域回転：頭部制御（Yawのみ）////////////////////////////
-            //頭部制御部
-            if (Math.Abs(yaw_angle) > Math.Abs(move_angle))
+            //1. SVM予測使用　ラベル0：局所回転Yaw＋Pitch　/　ラベル1：大域回転  /////////////////////////////
+            //回転制御部　ラベル1のとき頭部方向に応じて大域回転量++
+            if (svm_label == 1)         
             {
                 if (yaw_angle < 0)
                 {
@@ -162,12 +164,7 @@ public class FaceController_gyro : MonoBehaviour
                 first_step_flag = true;
                 currentTime = 0f;
             }
-            ////歩行動作（短押しのみ対応版）
-            //if (Input.GetKeyDown(KeyCode.Space))
-            //{
-            //    moveForward_D();
-            //}
-            //END 1-1.///////////////////////////////////////////////////////////////////////////////////////
+            //END 1.///////////////////////////////////////////////////////////////////////////////////////
         }
 
         if (f2_flag == true)
@@ -482,164 +479,6 @@ public class FaceController_gyro : MonoBehaviour
             //END 3.////////////////////////////////////////////////////////////////////////////
         }
 
-
-        //1-1. 局所回転：あり（Yawのみ） / 大域回転：頭部制御（顔戻しなし），キーボード操作（Pitch）//////////
-        //頭部制御部
-        //if (Math.Abs(yaw_angle) > Math.Abs(move_angle))
-        //{
-        //    if (yaw_angle < 0)
-        //    {
-        //        rotation_angle -= rotation_speed;
-        //    }
-        //    else
-        //    {
-        //        rotation_angle += rotation_speed;
-        //    }
-        //}
-        //キーボード操作部（Pitch）
-        //if (Input.GetKey(KeyCode.UpArrow))
-        //{
-        //    if (rotation_angle_pitch > min_pitch)
-        //    {
-        //        rotation_angle_pitch -= rotation_speed;
-        //    }
-        //}
-        //if (Input.GetKey(KeyCode.DownArrow))
-        //{
-        //    if (rotation_angle_pitch < max_pitch)
-        //    {
-        //        rotation_angle_pitch += rotation_speed;
-        //    }
-        //}
-        //newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
-        //newAngle.z = 0;      //首回転角roll初期化
-        //newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
-        //VReye.gameObject.transform.localEulerAngles = newAngle;
-        //END 1-1.//////////////////////////////////////////////////////////////////////////////////////////
-
-        //1-2. 局所回転：あり / 大域回転：頭部（顔戻しあり）//////////////////////////////////////
-        //もしmove_angleより大きければ角度取得，画面旋回
-        //if (Math.Abs(yaw_val) > Math.Abs(move_angle))
-        //{
-        //    temp_angle = -yaw_val;
-        //    return_face = true;
-        //    if (yaw_val > 0)
-        //    {
-        //        return_face_angle = return_angle;
-        //        rotation_angle -= rotation_speed;
-        //    }
-        //    else
-        //    {
-        //        return_face_angle = -return_angle;
-        //        rotation_angle += rotation_speed;
-        //    }
-        //}
-        //else
-        //{
-        //    //顔戻しのときは追従しない
-        //    if (Math.Abs(yaw_val) < Math.Abs(return_angle))
-        //    {
-        //        return_face = false;
-        //    }
-        //}
-
-        //if (return_face == false)
-        //{
-        //    newAngle.y = -yaw_val - initial_angle + rotation_angle + temp_angle + return_face_angle;     //首回転角＋初期調整角度＋旋回角度
-        //    MainCamera.gameObject.transform.localEulerAngles = newAngle;
-        //}
-        //else
-        //{
-        //    return_face_angle = 0.0f;
-        //    newAngle.y = temp_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
-        //    MainCamera.gameObject.transform.localEulerAngles = newAngle;
-        //}
-        //END 1-2.//////////////////////////////////////////////////////////////////////////
-
-        //2-1. 局所回転：なし / 大域回転：頭部制御（Yawのみ），キーボード操作（Pitch）/////////////////////
-        //if (Math.Abs(yaw_angle) > Math.Abs(move_angle))
-        //{
-        //    if (yaw_angle < 0)
-        //    {
-        //        rotation_angle -= rotation_speed;
-        //    }
-        //    else
-        //    {
-        //        rotation_angle += rotation_speed;
-        //    }
-        //}
-
-        //if (Input.GetKey(KeyCode.UpArrow))
-        //{
-        //    if (rotation_angle_pitch > min_pitch)
-        //    {
-        //        rotation_angle_pitch -= rotation_speed;
-        //    }
-        //}
-
-        //if (Input.GetKey(KeyCode.DownArrow))
-        //{
-        //    if (rotation_angle_pitch < max_pitch)
-        //    {
-        //        rotation_angle_pitch += rotation_speed;
-        //    }
-        //}
-        //newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
-        //                                                             //newAngle.x = 0;      //首回転角pitch初期化
-        //newAngle.z = 0;      //首回転角roll初期化
-        //newAngle.y = -initial_angle + rotation_angle;     //初期調整角度＋旋回角度
-        //VReye.gameObject.transform.localEulerAngles = newAngle;
-        //END 2.//////////////////////////////////////////////////////////////////////////////////////////
-
-        //5. 局所回転：あり（Yawのみ，ゲイン付き） / 大域回転：デバイス（Yaw＋Pitch）///////////////////////////////
-        //if (Input.GetKey(KeyCode.LeftArrow))
-        //{
-        //    rotation_angle -= rotation_speed;
-        //}
-
-        //if (Input.GetKey(KeyCode.RightArrow))
-        //{
-        //    rotation_angle += rotation_speed;
-        //}
-
-        //if (Input.GetKey(KeyCode.UpArrow))
-        //{
-        //    if (rotation_angle_pitch > min_pitch)
-        //    {
-        //        rotation_angle_pitch -= rotation_speed;
-        //    }
-        //}
-
-        //if (Input.GetKey(KeyCode.DownArrow))
-        //{
-        //    if (rotation_angle_pitch < max_pitch)
-        //    {
-        //        rotation_angle_pitch += rotation_speed;
-        //    }
-        //}
-        //newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
-        //                                                             //newAngle.x = 0;      //首回転角pitch初期化
-        //newAngle.z = 0;      //首回転角roll初期化
-        //newAngle.y = yaw_angle * rotation_gain - initial_angle + rotation_angle;     //（首回転角×ゲイン）＋初期調整角度＋旋回角度
-        //VReye.gameObject.transform.localEulerAngles = newAngle;
-        //END 5./////////////////////////////////////////////////////////////////////////////
-
-        //局所回転：あり（Yaw＋Pitch＋Roll） / 大域回転：デバイス//////////////////////////
-        //if (Input.GetKey(KeyCode.LeftArrow))
-        //{
-        //    rotation_angle -= rotation_speed;
-        //}
-
-        //if (Input.GetKey(KeyCode.RightArrow))
-        //{
-        //    rotation_angle += rotation_speed;
-        //}
-
-        //newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
-        //newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
-        //newAngle.z = roll_angle;                                     //首回転角roll
-        //VReye.gameObject.transform.localEulerAngles = newAngle;
-        //END 3.////////////////////////////////////////////////////////////////////////////
     }
 
     void FlagDown()
