@@ -65,19 +65,23 @@ public class receive_data_airpress : MonoBehaviour
                 D_left_max = D0 - D1;
             }
             //上下最大ストローク
-            if (D_up_max < (D0 + D1))
+            if (D0 * D1 > 0.0f)         //左右のエアバッグ共に圧力+もしくは-
             {
-                D_up_max = D0 + D1;
-            }
-            if (D_down_min > (D0 + D1))
-            {
-                D_down_min = D0 + D1;
+                if (D_up_max < (D0 + D1))
+                {
+                    D_up_max = D0 + D1;
+                }
+                if (D_down_min > (D0 + D1))
+                {
+                    D_down_min = D0 + D1;
+                }
             }
             Debug.Log("D_right_max: " + D_right_max + " D_left_max: " + D_left_max + "D_up_max: " + D_up_max + " D_down_min: " + D_down_min);
+            //Debug.Log("D0 " + D0 + "D1 " + D1);
         }
-        
+
         //値の計算///////////////////////////////////////////////////////////////////////////
-        if(cal_flag_2==true)
+        if (cal_flag_2 == true)
         {
             //圧力の変化量
             D0 = (P0 - P0_initial) / P0_initial;
@@ -85,14 +89,14 @@ public class receive_data_airpress : MonoBehaviour
             //圧力の左右変化量
             if (D1 > D0)
             {
-                f_val = (D1 - D0) / D_right_max *100;   //%表示
+                f_val = (D1 - D0) / D_right_max * 100;   //%表示
             }
             else
             {
                 f_val = -(D0 - D1) / D_left_max * 100;
             }
             //圧力の上下変化量
-            if (D0 > 0.0f && D1 > 0.0f)     //左右のエアバッグ共に圧力がかかる
+            if (D0 > 0.0f && D1 > 0.0f)     //左右のエアバッグ共に圧力がかかる  if (D0 > 0.0f && D1 > 0.0f && Math.Abs(D1 - D0) < D_up_max * 0.5f)
             {
                 f_val_ud = (D0 + D1) / D_up_max * 100;
             }
@@ -102,9 +106,10 @@ public class receive_data_airpress : MonoBehaviour
             }
             else
             {
-                f_val_ud = 0.0f * 100;            //どちらかのエアバッグに圧力がかかる（回転中）
+                //f_val_ud = 0.0f * 100;            //どちらかのエアバッグに圧力がかかる（回転中）
             }
             Debug.Log("f_val " + f_val + "f_val_ud " + f_val_ud);
+            //Debug.Log("D0 " + D0 + "D1 " + D1);
         }
     }
 

@@ -13,7 +13,7 @@ public class FaceController_airpress : MonoBehaviour
     //各種パラメータ
     public float t_force = 50.0f;          //回転閾値
     public float t_force_ud = 50.0f;       //歩行閾値
-    public float t_force_ud_2 = 25.0f;     //歩行閾値（長押し解除）
+    public float t_force_ud_2 = 30.0f;     //歩行閾値（長押し解除）
     public int stride = 100;               //離散移動の歩幅
     public float rotation_speed = 0.5f;            //旋回スピード
     //
@@ -51,6 +51,7 @@ public class FaceController_airpress : MonoBehaviour
     private bool first_step_flag = true;    //短押し用フラグ
     private float span = 1.0f;              //長押しの時間間隔
     private float currentTime = 0f;
+    private bool rotate_flag = false;       //回転中かどうかのフラグ
     //public float moveSpeed = 0.01f;
     //public float moveAngleX = 20.0f; 
     //
@@ -120,6 +121,7 @@ public class FaceController_airpress : MonoBehaviour
             //回転制御部
             if (Math.Abs(force) > t_force)
             {
+                rotate_flag = true;
                 if (force > 0)
                 {
                     rotation_angle -= rotation_speed;
@@ -129,12 +131,16 @@ public class FaceController_airpress : MonoBehaviour
                     rotation_angle += rotation_speed;
                 }
             }
+            else
+            {
+                rotate_flag = false;
+            }
             newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
             newAngle.z = 0;                                              //首回転角roll初期化
             newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
             VReye.gameObject.transform.localEulerAngles = newAngle;
             //歩行制御部（長押し・短押し対応版）
-            if (force_ud > t_force_ud)
+            if (force_ud > t_force_ud && rotate_flag == false)           //押し込み圧力が閾値超える＋回転していない
             {
                 currentTime += Time.deltaTime;  //長押しの時間カウント
                 if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
@@ -312,15 +318,113 @@ public class FaceController_airpress : MonoBehaviour
 
         if (f4_flag == true)
         {
-            //4.///////////////////////////////////////////
-
+            //4. 閾値：低速，中速，高速///////////////////////////////////////////
+            //回転制御部
+            if (Math.Abs(force) >= 80)   //高速
+            {
+                if (force > 0)
+                {
+                    rotation_angle -= 0.75f;
+                }
+                else
+                {
+                    rotation_angle += 0.75f;
+                }
+            }
+            else if (Math.Abs(force) < 80 && Math.Abs(force) >= 60)  //中速
+            {
+                if (force > 0)
+                {
+                    rotation_angle -= 0.5f;
+                }
+                else
+                {
+                    rotation_angle += 0.5f;
+                }
+            }
+            else if (Math.Abs(force) < 60 && Math.Abs(force) >= 40)  //低速
+            {
+                if (force > 0)
+                {
+                    rotation_angle -= 0.25f;
+                }
+                else
+                {
+                    rotation_angle += 0.25f;
+                }
+            }
+            newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
+            newAngle.z = 0;                                              //首回転角roll初期化
+            newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
+            VReye.gameObject.transform.localEulerAngles = newAngle;
+            //歩行制御部（長押し・短押し対応版）
+            if (force_ud > t_force_ud)
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (force_ud < t_force_ud_2)  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
             //END 4./////////////////////////////////////////////////////////////////////////////////////////
         }
 
         if (f5_flag == true)
         {
-            //5. ////////////////////
-
+            //5. 連続変速////////////////////
+            //回転制御部
+            if (Math.Abs(force) > t_force)   //高速
+            {
+                if (force > 0)
+                {
+                    rotation_angle += -(force - 30) / 100.0f;
+                }
+                else
+                {
+                    rotation_angle += -(force + 30) / 100.0f;
+                }
+            }
+            newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
+            newAngle.z = 0;                                              //首回転角roll初期化
+            newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
+            VReye.gameObject.transform.localEulerAngles = newAngle;
+            //歩行制御部（長押し・短押し対応版）
+            if (force_ud > t_force_ud)
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (force_ud < t_force_ud_2)  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
             //END 5./////////////////////////////////////////////////////////////////////////////////////
         }
 
