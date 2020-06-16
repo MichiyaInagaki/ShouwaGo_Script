@@ -1,0 +1,10 @@
+〇各スクリプトの説明
+・FaceController_airpress　空気圧枕（アナログセンサ版）
+・FaceController_airpress_D　空気圧枕（デジタルセンサ版）
+・FaceController_gyro　ジャイロセンサ
+・FaceController_gyro_airpress　ジャイロセンサ＋空気圧枕
+・FaceController_gyro_load　ジャイロセンサ＋ロードセル
+・FaceController_gyro_D_rotation　離散回転
+・FaceController_SVM　SVM
+・FaceController_tobii　tobii
+

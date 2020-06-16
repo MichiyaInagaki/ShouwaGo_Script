@@ -31,7 +31,7 @@ public class receive_data : MonoBehaviour
         {
             //"\t"分割でpitchとyaw情報取得
             string[] data = message.Split(new string[] { "\t" }, StringSplitOptions.None);
-            Debug.Log("pitch: " + data[0] + " yaw: " + data[1]);
+            //Debug.Log("pitch: " + data[0] + " yaw: " + data[1]);
             yaw_val = -float.Parse(data[1]);        //ここで±決める
             pitch_val = float.Parse(data[0]);
             //Debug.Log(message);

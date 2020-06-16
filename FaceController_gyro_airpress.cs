@@ -17,7 +17,7 @@ public class FaceController_gyro_airpress : MonoBehaviour
     public float t_force = 50.0f;          //回転閾値
     public float t_force_ud = 50.0f;       //歩行閾値
     public float t_force_ud_2 = 30.0f;     //歩行閾値（長押し解除）
-    public int stride = 100;               //離散移動の歩幅
+    public int stride = 50;               //離散移動の歩幅
     public float rotation_speed = 0.5f;            //旋回スピード
     //
     private Vector3 lastMousePosition;
@@ -34,6 +34,7 @@ public class FaceController_gyro_airpress : MonoBehaviour
     private float log_force = 0.0f;
     private string filePath = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\test_F3.csv";
     private string filePath2 = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\test_F4.csv";
+    private string filePath_time = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\time.csv";
     //ローパスフィルタ
     private float filter_gain = 0.75f;      //default: 0.75
     private float pre_yaw = 0.0f;
@@ -49,7 +50,7 @@ public class FaceController_gyro_airpress : MonoBehaviour
     private float initial_angle_pitch = 0.0f;       //初期角度pitch
     private float rotation_angle = 0.0f;            //旋回角度
     private float rotation_angle_pitch = 0.0f;      //旋回角度
-    //private float move_angle = 20.0f;               //追従角度（局所回転を行う角度）
+    private float move_angle = 20.0f;               //追従角度（局所回転を行う角度）
     //private float move_angle_pitch = 10.0f;         //追従角度（局所回転を行う角度）
     //private float temp_yaw_angle = 0.0f;            //一時格納する角度
     //private float max_pitch = 20;                   //キーボード操作pitch角最大
@@ -72,16 +73,18 @@ public class FaceController_gyro_airpress : MonoBehaviour
     private bool f5_flag = false;
     private bool f6_flag = false;
     private bool f7_flag = false;
+    //経過時間
+    float duration = 0.0f;
 
 
     void Start()
     {
         // ファイル書き出し
         // ヘッダー出力
-        string[] s1 = { "key", "yaw", "pitch", "force"};
-        string s2 = string.Join(",", s1);   //s1を一つの文字列として
-        File.AppendAllText(filePath, s2 + "\n");          //書き込み
-        File.AppendAllText(filePath2, s2 + "\n");          //書き込み
+        //string[] s1 = { "key", "yaw", "pitch", "force"};
+        //string s2 = string.Join(",", s1);   //s1を一つの文字列として
+        //File.AppendAllText(filePath, s2 + "\n");          //書き込み
+        //File.AppendAllText(filePath2, s2 + "\n");          //書き込み
 
         //角度の初期化
         newAngle.y = initial_angle;
@@ -98,72 +101,96 @@ public class FaceController_gyro_airpress : MonoBehaviour
         log_force = force;
 
         //動作切り替え
-        if (Input.GetKey(KeyCode.F1))
+        if (Input.GetKeyDown(KeyCode.F1))
         {
             FlagDown();
             f1_flag = true;
         }
-        if (Input.GetKey(KeyCode.F2))
+        if (Input.GetKeyDown(KeyCode.F2))
         {
             FlagDown();
             f2_flag = true;
         }
-        if (Input.GetKey(KeyCode.F3))
+        if (Input.GetKeyDown(KeyCode.F3))
         {
             FlagDown();
             f3_flag = true;
+            duration = 0;   //経過時間をリセット
+            File.AppendAllText(filePath_time, "F3" + "\n");
         }
-        if (Input.GetKey(KeyCode.F4))
+        if (Input.GetKeyDown(KeyCode.F4))
         {
             FlagDown();
             f4_flag = true;
+            duration = 0;   //経過時間をリセット
+            File.AppendAllText(filePath_time, "F4" + "\n");
         }
-        if (Input.GetKey(KeyCode.F5))
+        if (Input.GetKeyDown(KeyCode.F5))
         {
             FlagDown();
             f5_flag = true;
         }
-        if (Input.GetKey(KeyCode.F6))
+        if (Input.GetKeyDown(KeyCode.F6))
         {
             FlagDown();
             f6_flag = true;
         }
-        if (Input.GetKey(KeyCode.F7))
+        if (Input.GetKeyDown(KeyCode.F7))
         {
             FlagDown();
             f7_flag = true;
+            File.AppendAllText(filePath_time, duration + "\n"); //時間の記録出力
         }
 
 
         //各種処理
         if (f1_flag == true)
         {
-            //1. 空気圧センサの動作確認（閾値） /////////////////////////////////////////////////////////////////////////
-            yaw_angle = 0;
-            pitch_angle = 0;
-            //回転制御部
-            if (Math.Abs(force) > t_force)
+            //1. 空気圧センサの動作確認用（連続角度変化，大域回転なし） /////////////////////////////////////////////////////////////////////////
+            //局所回転角の取得
+            if (Math.Abs(force) < 15)
             {
-                rotate_flag = true;
-                if (force > 0)
-                {
-                    rotation_angle -= rotation_speed;
-                }
-                else
-                {
-                    rotation_angle += rotation_speed;
-                }
+                force_to_angle = 0.0f;
             }
             else
             {
-                rotate_flag = false;
+                force_to_angle = 0.69f * force - 3.46f;       //y=ax+b
             }
+            //平均値フィルタ
+            for (int i = AVE_NUM - 1; i > 0; i--)
+            {
+                list_force[i] = list_force[i - 1];
+            }
+            list_force[0] = force_to_angle;
+            for (int i = 0; i < AVE_NUM; i++)
+            {
+                ave_force += list_force[i];
+            }
+            ave_force = (float)(ave_force / AVE_NUM);
+            //ローパスフィルタ
+            mod_force = pre_force * filter_gain + ave_force * (1 - filter_gain);
+            pre_force = mod_force;
+            //ここで角度代入
+            yaw_angle = -mod_force;
+            //Debug.Log(yaw_angle);
+            //頭部制御部
+            //if (Math.Abs(force) > 80)
+            //{
+            //    if (force > 0)
+            //    {
+            //        rotation_angle -= rotation_speed;
+            //    }
+            //    else
+            //    {
+            //        rotation_angle += rotation_speed;
+            //    }
+            //}
             newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
             newAngle.z = 0;                                              //首回転角roll初期化
-            newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
+            newAngle.x = 0;                                              //首回転角pitch
             VReye.gameObject.transform.localEulerAngles = newAngle;
-            //歩行制御部（長押し・短押し対応版）
-            if (force_ud > t_force_ud && rotate_flag == false)           //押し込み圧力が閾値超える＋回転していない
+            //歩行制御部（空気圧制御）
+            if (force_ud > t_force_ud)
             {
                 currentTime += Time.deltaTime;  //長押しの時間カウント
                 if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
@@ -180,22 +207,17 @@ public class FaceController_gyro_airpress : MonoBehaviour
                     }
                 }
             }
-            if (force_ud < t_force_ud_2)  //ボタン離したらフラグ戻す（短押し用）
+            if (force_ud < t_force_ud)  //ボタン離したらフラグ戻す（短押し用）
             {
                 first_step_flag = true;
                 currentTime = 0f;
             }
-            ////歩行動作（短押しのみ対応版）
-            //if (Input.GetKeyDown(KeyCode.Space))
-            //{
-            //    moveForward_D();
-            //}
             //END 1.///////////////////////////////////////////////////////////////////////////////////////
         }
 
         if (f2_flag == true)
         {
-            //2. ジャイロセンサの動作確認 （yaw+pitch，デバイス左右）///////////////////////////////////////////
+            //2. ジャイロセンサの動作確認（局所回転：ジャイロ＋大域回転：キーボード）//////////////////////
             yaw_angle = log_yaw;
             pitch_angle = log_pitch;
             //ローパスフィルタ
@@ -203,7 +225,6 @@ public class FaceController_gyro_airpress : MonoBehaviour
             pre_yaw = yaw_angle;
             pitch_angle = pre_pitch * filter_gain + pitch_angle * (1 - filter_gain);
             pre_pitch = pitch_angle;
-            //
             if (Input.GetKey(KeyCode.LeftArrow))
             {
                 rotation_angle -= rotation_speed;
@@ -247,6 +268,7 @@ public class FaceController_gyro_airpress : MonoBehaviour
         {
             //3. 記録用（局所回転なし，デバイス左右） /////////////////////////////////
             log_key = 0;    //キー押さない：0
+            duration += Time.deltaTime;     //経過時間
             //歩行動作（長押し・短押し対応版）
             if (Input.GetKey(KeyCode.Space))
             {
@@ -302,6 +324,8 @@ public class FaceController_gyro_airpress : MonoBehaviour
         {
             //4. 記録用（局所回転あり，デバイス左右）///////////////////////////////////////////
             log_key = 0;    //キー押さない：0
+            duration += Time.deltaTime;     //経過時間
+            //
             yaw_angle = log_yaw;
             pitch_angle = log_pitch;
             //ローパスフィルタ
@@ -361,15 +385,110 @@ public class FaceController_gyro_airpress : MonoBehaviour
 
         if (f5_flag == true)
         {
-            //5. 連続変速////////////////////
-
+            //5. 局所回転：ジャイロ＋大域回転：ジャイロ閾値 //////////////////////////////////////////////
+            yaw_angle = log_yaw;
+            pitch_angle = log_pitch;
+            //ローパスフィルタ
+            yaw_angle = pre_yaw * filter_gain + yaw_angle * (1 - filter_gain);
+            pre_yaw = yaw_angle;
+            pitch_angle = pre_pitch * filter_gain + pitch_angle * (1 - filter_gain);
+            pre_pitch = pitch_angle;
+            //頭部制御部
+            if (Math.Abs(yaw_angle) > Math.Abs(move_angle))
+            {
+                if (yaw_angle < 0)
+                {
+                    rotation_angle -= rotation_speed;
+                }
+                else
+                {
+                    rotation_angle += rotation_speed;
+                }
+            }
+            newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
+            newAngle.z = 0;                                              //首回転角roll初期化
+            newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
+            VReye.gameObject.transform.localEulerAngles = newAngle;
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
             //END 5./////////////////////////////////////////////////////////////////////////////////////
         }
 
         if (f6_flag == true)
         {
-            //6. /////////////////////////////
-
+            //6.局所回転：ジャイロ＋大域回転：空気圧閾値 /////////////////////////////
+            yaw_angle = log_yaw;
+            pitch_angle = log_pitch;
+            //ローパスフィルタ
+            yaw_angle = pre_yaw * filter_gain + yaw_angle * (1 - filter_gain);
+            pre_yaw = yaw_angle;
+            pitch_angle = pre_pitch * filter_gain + pitch_angle * (1 - filter_gain);
+            pre_pitch = pitch_angle;
+            //回転制御部（空気圧閾値）
+            if (Math.Abs(force) > t_force)
+            {
+                rotate_flag = true;
+                if (force > 0)
+                {
+                    rotation_angle -= rotation_speed;
+                }
+                else
+                {
+                    rotation_angle += rotation_speed;
+                }
+            }
+            else
+            {
+                rotate_flag = false;
+            }
+            newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
+            newAngle.z = 0;                                              //首回転角roll初期化
+            newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
+            VReye.gameObject.transform.localEulerAngles = newAngle;
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
             //END 3.////////////////////////////////////////////////////////////////////////////
         }
 
