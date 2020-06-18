@@ -33,7 +33,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
     private float initial_angle_pitch = 0.0f;       //初期角度pitch
     private float move_angle = 20.0f;               //追従角度（局所回転を行う角度）
     private float move_angle_pitch = 10.0f;         //追従角度（局所回転を行う角度）
-    private float rotation_speed = 0.5f;            //旋回スピード
+    private float rotation_speed = 0.5f;            //旋回スピード default:0.5f
     private float rotation_speed2 = 2.0f;           //旋回スピード@なめらか回転
     private float rotation_angle = 0.0f;            //旋回角度
     private float rotation_angle_pitch = 0.0f;      //旋回角度
@@ -50,6 +50,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
     private const int ROT_MAX = 360;                //最大回転角
     private float delta_yaw = 0.0f;                 //回転前後の位置ズレ補正
     private float delta_pitch = 0.0f;
+    private bool headlock_flag = false;
     //
     private bool fixed_L_flag = false;              //固定フレームレートで回転させるためのフラグ
     private bool fixed_R_flag = false;
@@ -71,7 +72,9 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
     private bool f5_flag = false;
     private bool f6_flag = false;
     private bool f7_flag = false;
-
+    private bool f8_flag = false;
+    private bool f9_flag = false;
+    private bool f10_flag = false;
 
     void Start()
     {
@@ -131,6 +134,21 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             FlagDown();
             f7_flag = true;
         }
+        if (Input.GetKey(KeyCode.F8))
+        {
+            FlagDown();
+            f8_flag = true;
+        }
+        if (Input.GetKey(KeyCode.F9))
+        {
+            FlagDown();
+            f9_flag = true;
+        }
+        if (Input.GetKey(KeyCode.F10))
+        {
+            FlagDown();
+            f10_flag = true;
+        }
 
 
         //各種処理
@@ -183,7 +201,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             {
                 delta_yaw += yaw_angle - temp_yaw_angle;
                 delta_pitch += pitch_angle - temp_pitch_angle;
-                fixed_L_flag = false;   
+                fixed_L_flag = false;
             }
             if (Input.GetKeyUp(KeyCode.RightArrow))
             {
@@ -191,7 +209,6 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                 delta_pitch += pitch_angle - temp_pitch_angle;
                 fixed_R_flag = false;
             }
-            Debug.Log("delta_yaw" + delta_yaw);
             //回転していないときはトラッキングあり
             if (fixed_L_flag == false && fixed_R_flag == false)
             {
@@ -621,9 +638,8 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                 first_step_flag = true;
                 currentTime = 0f;
             }
-            //END 3.////////////////////////////////////////////////////////////////////////////
+            //END 6.////////////////////////////////////////////////////////////////////////////
         }
-
 
         if (f7_flag == true)
         {
@@ -710,13 +726,236 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                 first_step_flag = true;
                 currentTime = 0f;
             }
-            //END 3.////////////////////////////////////////////////////////////////////////////
+            //END 7.////////////////////////////////////////////////////////////////////////////
         }
 
+        if (f8_flag == true)
+        {
+            //8. 局所回転：なし / ヘッドロック ////////////////////////////////////////////
+            //連続ヘッドロック//////////////////////////////
+            if (Input.GetKeyDown(KeyCode.Z))
+            {
+                headlock_flag = true;
+                temp_yaw_angle = yaw_angle;
+            }
+            if (Input.GetKey(KeyCode.Z))
+            {
+                yaw_angle = - (yaw_angle - temp_yaw_angle);
+            }
+            if (Input.GetKeyUp(KeyCode.Z))
+            {
+                rotation_angle -= yaw_angle - temp_yaw_angle;
+                headlock_flag = false;
+            }
+            //離散ヘッドロック//////////////////////////////////
+            if (Input.GetKeyDown(KeyCode.X))
+            {
+                temp_yaw_angle = yaw_angle;
+            }
+            if (Input.GetKeyUp(KeyCode.X))
+            {
+                rotation_angle -= (yaw_angle - temp_yaw_angle);
+            }
+            ////////////////////////////////////////////////////
+
+            //キーボードでpitch方向
+            if (Input.GetKey(KeyCode.UpArrow))
+            {
+                if (rotation_angle_pitch > min_pitch)
+                {
+                    rotation_angle_pitch -= rotation_speed;
+                }
+            }
+
+            if (Input.GetKey(KeyCode.DownArrow))
+            {
+                if (rotation_angle_pitch < max_pitch)
+                {
+                    rotation_angle_pitch += rotation_speed;
+                }
+            }
+            //ヘッドロックしてない＝無回転
+            if (headlock_flag == false)
+            {
+                newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
+                newAngle.z = 0;      //首回転角roll初期化
+                newAngle.y = -initial_angle + rotation_angle;     //初期調整角度＋旋回角度
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+            }
+            else
+            {
+                //ヘッドロック中＝逆旋回
+                newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
+                newAngle.z = 0;      //首回転角roll初期化
+                newAngle.y = -initial_angle + rotation_angle + yaw_angle;     //初期調整角度＋旋回角度
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+            }
+
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
+            //END 8. //////////////////////////////////////////////////////////////////////
+        }
+
+        if (f9_flag == true)
+        {
+            //9. 局所回転：あり（Yaw＋Pitch） / ヘッドロック ////////////////////////////
+
+            //連続ヘッドロック//////////////////////////////
+            if (Input.GetKeyDown(KeyCode.Z))
+            {
+                rotation_angle += yaw_angle * 2;
+            }
+            if (Input.GetKey(KeyCode.Z))
+            {
+                yaw_angle = -yaw_angle;
+            }
+            if (Input.GetKeyUp(KeyCode.Z))
+            {
+                rotation_angle -= yaw_angle * 2;
+            }
+            //離散ヘッドロック//////////////////////////////////
+            if (Input.GetKeyDown(KeyCode.X))
+            {
+                temp_yaw_angle = yaw_angle;
+                temp_pitch_angle = pitch_angle;
+                headlock_flag = true;
+            }
+            if (Input.GetKeyUp(KeyCode.X))
+            {
+                //delta_yaw += yaw_angle - temp_yaw_angle;
+                //delta_pitch += pitch_angle - temp_pitch_angle;
+                rotation_angle -= (yaw_angle - temp_yaw_angle) * 2;
+                headlock_flag = false;
+            }
+            ///////////////////////////////////////////////////
+
+            //ヘッドロックしてないとき  
+            if (headlock_flag == false)
+            {
+                newAngle.y = yaw_angle - initial_angle + rotation_angle;        //首回転角＋初期調整角度＋旋回角度
+                newAngle.z = 0;                                                             //首回転角roll初期化
+                newAngle.x = pitch_angle + initial_angle_pitch;               //首回転角pitch
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+            }
+            else
+            {
+                //ヘッドロックしてるとき固定
+                newAngle.y = temp_yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
+                newAngle.z = 0;                                                               //首回転角roll初期化
+                newAngle.x = temp_pitch_angle + initial_angle_pitch;            //首回転角pitch
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+            }
+            //
+
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
+            //END 9.///////////////////////////////////////////////////////////////////////////////////////
+        }
+
+        if (f10_flag == true)
+        {
+            //10. 局所回転：なし / 大域回転：デバイス（Yaw + Pitch）////////////////////////////
+            if (Input.GetKey(KeyCode.LeftArrow))
+            {
+                rotation_angle -= rotation_speed;
+            }
+
+            if (Input.GetKey(KeyCode.RightArrow))
+            {
+                rotation_angle += rotation_speed;
+            }
+
+            if (Input.GetKey(KeyCode.UpArrow))
+            {
+                if (rotation_angle_pitch > min_pitch)
+                {
+                    rotation_angle_pitch -= rotation_speed;
+                }
+            }
+
+            if (Input.GetKey(KeyCode.DownArrow))
+            {
+                if (rotation_angle_pitch < max_pitch)
+                {
+                    rotation_angle_pitch += rotation_speed;
+                }
+            }
+            newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
+            //newAngle.x = 0;      //首回転角pitch初期化
+            newAngle.z = 0;      //首回転角roll初期化
+            newAngle.y = -initial_angle + rotation_angle;     //初期調整角度＋旋回角度
+            VReye.gameObject.transform.localEulerAngles = newAngle;
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
+            //END 10. //////////////////////////////////////////////////////////////////////
+        }
     }
 
-    //フレームレート依存の動作をここで行う
-    void FixedUpdate()
+        //フレームレート依存の動作をここで行う
+        void FixedUpdate()
     {
         if (fixed_L_flag == true)
         {
@@ -731,7 +970,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
 
     void FlagDown()
     {
-        f1_flag = f2_flag = f3_flag = f4_flag = f5_flag = f6_flag = f7_flag = false;
+        f1_flag = f2_flag = f3_flag = f4_flag = f5_flag = f6_flag = f7_flag = f8_flag = f9_flag = f10_flag = false;
     }
 
     //離散移動の関数/////////////////////////////////////////////////////////////
