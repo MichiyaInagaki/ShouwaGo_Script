@@ -75,6 +75,8 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
     private bool f8_flag = false;
     private bool f9_flag = false;
     private bool f10_flag = false;
+    private bool f11_flag = false;
+    private bool f12_flag = false;
 
     void Start()
     {
@@ -148,6 +150,16 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
         {
             FlagDown();
             f10_flag = true;
+        }
+        if (Input.GetKey(KeyCode.F11))
+        {
+            FlagDown();
+            f11_flag = true;
+        }
+        if (Input.GetKey(KeyCode.F12))
+        {
+            FlagDown();
+            f12_flag = true;
         }
 
 
@@ -952,6 +964,95 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             }
             //END 10. //////////////////////////////////////////////////////////////////////
         }
+
+        if (f11_flag == true)
+        {
+            //11. 局所回転：なし / ムーブ ////////////////////////////////////////////
+            //連続ヘッドムーブ//////////////////////////////
+            if (Input.GetKeyDown(KeyCode.Z))
+            {
+                headlock_flag = true;
+                temp_yaw_angle = yaw_angle;
+            }
+            if (Input.GetKey(KeyCode.Z))
+            {
+                yaw_angle = (yaw_angle - temp_yaw_angle);
+            }
+            if (Input.GetKeyUp(KeyCode.Z))
+            {
+                rotation_angle += yaw_angle - temp_yaw_angle;
+                headlock_flag = false;
+            }
+            //離散ヘッドロック//////////////////////////////////
+            if (Input.GetKeyDown(KeyCode.X))
+            {
+                temp_yaw_angle = yaw_angle;
+            }
+            if (Input.GetKeyUp(KeyCode.X))
+            {
+                rotation_angle += (yaw_angle - temp_yaw_angle);
+            }
+            ////////////////////////////////////////////////////
+
+            //キーボードでpitch方向
+            if (Input.GetKey(KeyCode.UpArrow))
+            {
+                if (rotation_angle_pitch > min_pitch)
+                {
+                    rotation_angle_pitch -= rotation_speed;
+                }
+            }
+
+            if (Input.GetKey(KeyCode.DownArrow))
+            {
+                if (rotation_angle_pitch < max_pitch)
+                {
+                    rotation_angle_pitch += rotation_speed;
+                }
+            }
+            //ヘッドムーブしてない＝無回転
+            if (headlock_flag == false)
+            {
+                newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
+                newAngle.z = 0;      //首回転角roll初期化
+                newAngle.y = -initial_angle + rotation_angle;     //初期調整角度＋旋回角度
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+            }
+            else
+            {
+                //ヘッドムーブ中＝順旋回
+                newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
+                newAngle.z = 0;      //首回転角roll初期化
+                newAngle.y = -initial_angle + rotation_angle + yaw_angle;     //初期調整角度＋旋回角度
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+            }
+
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
+            //END 11. //////////////////////////////////////////////////////////////////////
+        }
+
     }
 
         //フレームレート依存の動作をここで行う
@@ -970,7 +1071,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
 
     void FlagDown()
     {
-        f1_flag = f2_flag = f3_flag = f4_flag = f5_flag = f6_flag = f7_flag = f8_flag = f9_flag = f10_flag = false;
+        f1_flag = f2_flag = f3_flag = f4_flag = f5_flag = f6_flag = f7_flag = f8_flag = f9_flag = f10_flag = f11_flag = f12_flag = false;
     }
 
     //離散移動の関数/////////////////////////////////////////////////////////////
