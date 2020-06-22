@@ -77,6 +77,9 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
     private bool f10_flag = false;
     private bool f11_flag = false;
     private bool f12_flag = false;
+    //
+    public bool init_flag = false;  //pitch角 初期化フラグ
+
 
     void Start()
     {
@@ -212,13 +215,13 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             if (Input.GetKeyUp(KeyCode.LeftArrow))
             {
                 delta_yaw += yaw_angle - temp_yaw_angle;
-                delta_pitch += pitch_angle - temp_pitch_angle;
+                //delta_pitch += pitch_angle - temp_pitch_angle;
                 fixed_L_flag = false;
             }
             if (Input.GetKeyUp(KeyCode.RightArrow))
             {
                 delta_yaw += yaw_angle - temp_yaw_angle;
-                delta_pitch += pitch_angle - temp_pitch_angle;
+                //delta_pitch += pitch_angle - temp_pitch_angle;
                 fixed_R_flag = false;
             }
             //回転していないときはトラッキングあり
@@ -226,7 +229,8 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             {
                 newAngle.y = yaw_angle - initial_angle + rotation_angle - delta_yaw;        //首回転角＋初期調整角度＋旋回角度
                 newAngle.z = 0;                                                             //首回転角roll初期化
-                newAngle.x = pitch_angle + initial_angle_pitch - delta_pitch;               //首回転角pitch
+                //newAngle.x = pitch_angle + initial_angle_pitch - delta_pitch;               //首回転角pitch
+                newAngle.x = pitch_angle + initial_angle_pitch;               //首回転角pitch
                 VReye.gameObject.transform.localEulerAngles = newAngle;
             }
             else
@@ -234,7 +238,8 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                 //回転時はトラッキング無効
                 newAngle.y = temp_yaw_angle - initial_angle + rotation_angle - delta_yaw;     //首回転角＋初期調整角度＋旋回角度
                 newAngle.z = 0;                                                               //首回転角roll初期化
-                newAngle.x = temp_pitch_angle + initial_angle_pitch - delta_pitch;            //首回転角pitch
+                //newAngle.x = temp_pitch_angle + initial_angle_pitch - delta_pitch;            //首回転角pitch
+                newAngle.x = pitch_angle + initial_angle_pitch;               //首回転角pitch
                 VReye.gameObject.transform.localEulerAngles = newAngle;
             }
             //
@@ -483,7 +488,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                     D_rotation_flag_L = false;
                     fixed_L_flag = false;
                     delta_yaw += yaw_angle - temp_yaw_angle;         //回転前後の位置ズレ補正用
-                    delta_pitch += pitch_angle - temp_pitch_angle;
+                    //delta_pitch += pitch_angle - temp_pitch_angle;
                 }
             }
             if (D_rotation_flag_R == true)
@@ -495,7 +500,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                     D_rotation_flag_R = false;
                     fixed_R_flag = false;
                     delta_yaw += yaw_angle - temp_yaw_angle;         //回転前後の位置ズレ補正用
-                    delta_pitch += pitch_angle - temp_pitch_angle;
+                    //delta_pitch += pitch_angle - temp_pitch_angle;
                 }
             }
             //
@@ -504,14 +509,16 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             {
                 newAngle.y = yaw_angle - initial_angle + rotation_angle - delta_yaw;     //首回転角＋初期調整角度＋旋回角度＋回転前後の位置ズレ補正
                 newAngle.z = 0;                                                          //首回転角roll初期化
-                newAngle.x = pitch_angle + initial_angle_pitch - delta_pitch;            //首回転角pitch
+                //newAngle.x = pitch_angle + initial_angle_pitch - delta_pitch;            //首回転角pitch
+                newAngle.x = pitch_angle + initial_angle_pitch;
                 VReye.gameObject.transform.localEulerAngles = newAngle;
             }
             else
             {
                 newAngle.y = temp_yaw_angle - initial_angle + rotation_angle - delta_yaw;       //首回転角＋初期調整角度＋旋回角度
                 newAngle.z = 0;                                                                 //首回転角roll初期化
-                newAngle.x = temp_pitch_angle + initial_angle_pitch - delta_pitch;              //首回転角pitch
+                //newAngle.x = temp_pitch_angle + initial_angle_pitch - delta_pitch;              //首回転角pitch
+                newAngle.x = pitch_angle + initial_angle_pitch;
                 VReye.gameObject.transform.localEulerAngles = newAngle;
             }
 
@@ -1051,6 +1058,83 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                 currentTime = 0f;
             }
             //END 11. //////////////////////////////////////////////////////////////////////
+        }
+
+        if (f12_flag == true)
+        {
+            //12. 局所回転：あり（Yaw＋Pitch） / ヘッドムーブ ////////////////////////////
+
+            //ヘッドムーブ//////////////////////////////
+            if (Input.GetKeyDown(KeyCode.Z))
+            {
+                temp_yaw_angle = yaw_angle;
+                temp_pitch_angle = pitch_angle;
+                headlock_flag = true;
+            }
+            else
+            {
+                init_flag = false;
+            }
+            if (Input.GetKeyUp(KeyCode.Z))
+            {
+                rotation_angle -= yaw_angle - temp_yaw_angle;
+                //delta_pitch = pitch_angle - temp_pitch_angle;  
+                headlock_flag = false;
+            }
+
+            ////temp
+            //if (Input.GetKeyDown(KeyCode.X))
+            //{
+            //    init_flag = true;
+            //}
+            //else
+            //{
+            //    init_flag = false;
+            //}
+
+            //ヘッドムーブしてないとき＝ヘッドトラッキング有効  
+            if (headlock_flag == false)
+            {
+                newAngle.y = yaw_angle - initial_angle + rotation_angle;            //首回転角＋初期調整角度＋旋回角度
+                newAngle.z = 0;                                                     //首回転角roll初期化
+                newAngle.x = pitch_angle + initial_angle_pitch;  //首回転角pitch
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+            }
+            else
+            {
+                //ヘッドムーブしてるとき画面固定＝ヘッドトラッキング無効
+                newAngle.y = temp_yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
+                newAngle.z = 0;                                                   //首回転角roll初期化
+                newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
+                VReye.gameObject.transform.localEulerAngles = newAngle;
+                //init_flag = true;
+            }
+            //
+
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
+            //END 9.///////////////////////////////////////////////////////////////////////////////////////
         }
 
     }

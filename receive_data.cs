@@ -6,8 +6,10 @@ using UnityEngine;
 public class receive_data : MonoBehaviour
 {
     public SerialHandler serialHandler;
+    public GameObject FaceController;
     public float yaw_val;
     public float pitch_val;
+    private bool init = false;       //初期化フラグ
 
     void Start()
     {
@@ -17,10 +19,18 @@ public class receive_data : MonoBehaviour
 
     void Update()
     {
+        //姿勢初期化フラグ
+        init = FaceController.GetComponent<FaceController_gyro_D_rotation>().init_flag;
+
         //Rキーで姿勢を初期化する
         if (Input.GetKey(KeyCode.R))
         {
             serialHandler.Write("0");   //文字列を送信
+        }
+        //Pキーでpitch姿勢のみ初期化する
+        if (Input.GetKey(KeyCode.P) || init == true)
+        {
+            serialHandler.Write("1");   //文字列を送信
         }
     }
 
