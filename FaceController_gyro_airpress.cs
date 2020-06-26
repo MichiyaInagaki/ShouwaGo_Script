@@ -32,9 +32,9 @@ public class FaceController_gyro_airpress : MonoBehaviour
     private float log_yaw = 0.0f;
     private float log_pitch = 0.0f;
     private float log_force = 0.0f;
-    private string filePath = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\test_F3.csv";
-    private string filePath2 = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\test_F4.csv";
-    private string filePath_time = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\time.csv";
+    private string filePath = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\angle\test_F3.csv";
+    private string filePath2 = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\angle\test_F4.csv";
+    private string filePath_time = @"C:\Users\inaga\OneDrive\デスクトップ\exe\csv\angle\time.csv";
     //ローパスフィルタ
     private float filter_gain = 0.75f;      //default: 0.75
     private float pre_yaw = 0.0f;
@@ -495,8 +495,53 @@ public class FaceController_gyro_airpress : MonoBehaviour
 
         if (f7_flag == true)
         {
-            //7. //////////////////////////
-
+            //7. 空気圧センサヘッドトラッキング　y=ax　//////////////////////////
+            //局所回転角の取得
+            force_to_angle = 0.3f * force;       //y=ax : force100 / yaw30
+            //平均値フィルタ
+            for (int i = AVE_NUM - 1; i > 0; i--)
+            {
+                list_force[i] = list_force[i - 1];
+            }
+            list_force[0] = force_to_angle;
+            for (int i = 0; i < AVE_NUM; i++)
+            {
+                ave_force += list_force[i];
+            }
+            ave_force = (float)(ave_force / AVE_NUM);
+            //ローパスフィルタ
+            mod_force = pre_force * filter_gain + ave_force * (1 - filter_gain);
+            pre_force = mod_force;
+            //ここで角度代入
+            yaw_angle = -mod_force;
+            //
+            newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
+            newAngle.z = 0;                                              //首回転角roll初期化
+            newAngle.x = 0;                                              //首回転角pitch
+            VReye.gameObject.transform.localEulerAngles = newAngle;
+            //歩行動作（長押し・短押し対応版）
+            if (Input.GetKey(KeyCode.Space))
+            {
+                currentTime += Time.deltaTime;  //長押しの時間カウント
+                if (first_step_flag == true)    //最初に押した瞬間は一歩進む（短押し用）
+                {
+                    moveForward_D();
+                    first_step_flag = false;
+                }
+                else
+                {
+                    if (currentTime > span)     //長押しで一定時間ごとに前進
+                    {
+                        moveForward_D();
+                        currentTime = 0f;
+                    }
+                }
+            }
+            if (Input.GetKeyUp(KeyCode.Space))  //ボタン離したらフラグ戻す（短押し用）
+            {
+                first_step_flag = true;
+                currentTime = 0f;
+            }
             //END 3.////////////////////////////////////////////////////////////////////////////
         }
     }

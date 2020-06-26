@@ -79,6 +79,9 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
     private bool f12_flag = false;
     //
     public bool init_flag = false;  //pitch角 初期化フラグ
+    //フェードイン・フェードアウト
+    public bool fade_in = false;
+    public bool fade_out = false;
 
 
     void Start()
@@ -201,6 +204,8 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             {
                 temp_yaw_angle = yaw_angle;
                 temp_pitch_angle = pitch_angle;
+                fade_in = true;
+                fade_out = false;
             }
             //FixedUpdeteでの回転処理開始
             if (Input.GetKey(KeyCode.LeftArrow))
@@ -217,12 +222,16 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
                 delta_yaw += yaw_angle - temp_yaw_angle;
                 //delta_pitch += pitch_angle - temp_pitch_angle;
                 fixed_L_flag = false;
+                fade_in = false;
+                fade_out = true;
             }
             if (Input.GetKeyUp(KeyCode.RightArrow))
             {
                 delta_yaw += yaw_angle - temp_yaw_angle;
                 //delta_pitch += pitch_angle - temp_pitch_angle;
                 fixed_R_flag = false;
+                fade_in = false;
+                fade_out = true;
             }
             //回転していないときはトラッキングあり
             if (fixed_L_flag == false && fixed_R_flag == false)
