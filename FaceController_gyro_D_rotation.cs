@@ -54,6 +54,8 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
     //
     private bool fixed_L_flag = false;              //固定フレームレートで回転させるためのフラグ
     private bool fixed_R_flag = false;
+    private bool fixed_U_flag = false;
+    private bool fixed_D_flag = false;
     //ゲイン
     private float rotation_gain = 1.5f;     //局所回転ゲイン
     private float pitch_gain = 1.0f;        //pitchゲイン
@@ -768,7 +770,7 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
             }
             if (Input.GetKey(KeyCode.Z))
             {
-                yaw_angle = - (yaw_angle - temp_yaw_angle);
+                yaw_angle = -(yaw_angle - temp_yaw_angle);
             }
             if (Input.GetKeyUp(KeyCode.Z))
             {
@@ -925,31 +927,78 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
         if (f10_flag == true)
         {
             //10. 局所回転：なし / 大域回転：デバイス（Yaw + Pitch）////////////////////////////
+            //if (Input.GetKey(KeyCode.LeftArrow))
+            //{
+            //    rotation_angle -= rotation_speed;
+            //}
+            //if (Input.GetKey(KeyCode.RightArrow))
+            //{
+            //    rotation_angle += rotation_speed;
+            //}
+            //if (Input.GetKey(KeyCode.UpArrow))
+            //{
+            //    if (rotation_angle_pitch > min_pitch)
+            //    {
+            //        rotation_angle_pitch -= rotation_speed;
+            //    }
+            //}
+            //if (Input.GetKey(KeyCode.DownArrow))
+            //{
+            //    if (rotation_angle_pitch < max_pitch)
+            //    {
+            //        rotation_angle_pitch += rotation_speed;
+            //    }
+            //}
+
+            //キーを押した瞬間フェード
+            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
+            {
+                fade_in = true;
+                fade_out = false;
+            }
+            //FixedUpdeteでの回転処理開始
             if (Input.GetKey(KeyCode.LeftArrow))
             {
-                rotation_angle -= rotation_speed;
+                fixed_L_flag = true;
             }
-
             if (Input.GetKey(KeyCode.RightArrow))
             {
-                rotation_angle += rotation_speed;
+                fixed_R_flag = true;
             }
-
             if (Input.GetKey(KeyCode.UpArrow))
             {
-                if (rotation_angle_pitch > min_pitch)
-                {
-                    rotation_angle_pitch -= rotation_speed;
-                }
+                fixed_U_flag = true;
             }
-
             if (Input.GetKey(KeyCode.DownArrow))
             {
-                if (rotation_angle_pitch < max_pitch)
-                {
-                    rotation_angle_pitch += rotation_speed;
-                }
+                fixed_D_flag = true;
             }
+            //FixedUpdeteでの回転処理終了
+            if (Input.GetKeyUp(KeyCode.LeftArrow))
+            {
+                fixed_L_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+            if (Input.GetKeyUp(KeyCode.RightArrow))
+            {
+                fixed_R_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+            if (Input.GetKeyUp(KeyCode.UpArrow))
+            {
+                fixed_U_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+            if (Input.GetKeyUp(KeyCode.DownArrow))
+            {
+                fixed_D_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+            //
             newAngle.x = rotation_angle_pitch;                           //キーボードでpitch角操作
             //newAngle.x = 0;      //首回転角pitch初期化
             newAngle.z = 0;      //首回転角roll初期化
@@ -1148,8 +1197,8 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
 
     }
 
-        //フレームレート依存の動作をここで行う
-        void FixedUpdate()
+    //フレームレート依存の動作をここで行う
+    void FixedUpdate()
     {
         if (fixed_L_flag == true)
         {
@@ -1159,6 +1208,16 @@ public class FaceController_gyro_D_rotation : MonoBehaviour
         if (fixed_R_flag == true)
         {
             rotation_angle += rotation_speed;
+        }
+
+        if (fixed_U_flag == true)
+        {
+            rotation_angle_pitch -= rotation_speed;
+        }
+
+        if (fixed_D_flag == true)
+        {
+            rotation_angle_pitch += rotation_speed;
         }
     }
 

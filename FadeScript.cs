@@ -9,7 +9,7 @@ public class FadeScript : MonoBehaviour
     public float speed = 0.04f;  //透明化の速さ
     private float alfa;    //A値を操作するための変数
     private float red, green, blue;    //RGBを操作するための変数
-    private float max_fade = 0.75f;      //最大のフェード
+    private float max_fade = 0.9f;      //最大のフェード
     private bool fadein_flag = false;   //フェードイン
     private bool fadeout_flag = false;  //フェードアウト
 
