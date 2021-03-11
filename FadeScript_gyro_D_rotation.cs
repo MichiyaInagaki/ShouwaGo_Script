@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class FadeScript : MonoBehaviour
+public class FadeScript_gyro_D_rotation : MonoBehaviour
 {
     public GameObject FaceController;
     public float speed = 0.04f;  //透明化の速さ
+    public bool fade_mode_on = true;    //フェードかけるかどうか
+    //
     private float alfa;    //A値を操作するための変数
     private float red, green, blue;    //RGBを操作するための変数
     private float max_fade = 0.9f;      //最大のフェード
@@ -29,46 +31,54 @@ public class FadeScript : MonoBehaviour
         //
         fadein_flag = FaceController.GetComponent<FaceController_gyro_D_rotation>().fade_in;
         fadeout_flag = FaceController.GetComponent<FaceController_gyro_D_rotation>().fade_out;
+        //フェード機能のオンオフ
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            if (fade_mode_on == true)
+            {
+                fade_mode_on = false;
+            }
+            else if (fade_mode_on == false)
+            {
+                fade_mode_on = true;
+            }
+        }
         //
         GetComponent<Image>().color = new Color(red, green, blue, alfa);
-        //デバッグ
-        //if (Input.GetKey(KeyCode.F1))
-        //{
-        //    fadein_flag = true;
-        //    fadeout_flag = false;
-        //}
-        //if (Input.GetKey(KeyCode.F2))
-        //{
-        //    fadein_flag = false;
-        //    fadeout_flag = true;
-        //}
     }
 
     //フレームレート依存の動作をここで行う
     void FixedUpdate()
     {
-        if (fadein_flag == true)
+        if (fade_mode_on == true)
         {
-            if (alfa < max_fade)
+            if (fadein_flag == true)
             {
-                alfa += speed;
+                if (alfa < max_fade)
+                {
+                    alfa += speed;
+                }
+                else
+                {
+                    alfa = max_fade;
+                }
             }
-            else
+
+            if (fadeout_flag == true)
             {
-                alfa = max_fade;
+                if (alfa > 0)
+                {
+                    alfa -= speed;
+                }
+                else
+                {
+                    alfa = 0;
+                }
             }
         }
-
-        if (fadeout_flag == true)
+        else if (fade_mode_on == false)
         {
-            if (alfa > 0)
-            {
-                alfa -= speed;
-            }
-            else
-            {
-                alfa = 0;
-            }
+            alfa = 0;   //フェード機能オフ
         }
     }
 }

@@ -18,7 +18,7 @@ public class FaceController_gyro_airpress : MonoBehaviour
     public float t_force_ud = 50.0f;       //歩行閾値
     public float t_force_ud_2 = 30.0f;     //歩行閾値（長押し解除）
     public int stride = 50;               //離散移動の歩幅
-    public float rotation_speed = 0.5f;            //旋回スピード
+    public float rotation_speed = 0.3f;            //旋回スピード
     //
     private Vector3 lastMousePosition;
     private Vector3 newAngle = new Vector3(0, 0, 0);
@@ -73,8 +73,17 @@ public class FaceController_gyro_airpress : MonoBehaviour
     private bool f5_flag = false;
     private bool f6_flag = false;
     private bool f7_flag = false;
+    private bool f12_flag = false;
     //経過時間
     float duration = 0.0f;
+    //  
+    private bool fixed_L_flag = false;              //固定フレームレートで回転させるためのフラグ
+    private bool fixed_R_flag = false;
+    private bool fixed_U_flag = false;
+    private bool fixed_D_flag = false;
+    //フェードイン・フェードアウト
+    public bool fade_in = false;
+    public bool fade_out = false;
 
 
     void Start()
@@ -139,6 +148,11 @@ public class FaceController_gyro_airpress : MonoBehaviour
         {
             FlagDown();
             f7_flag = true;
+        }
+        if (Input.GetKeyDown(KeyCode.F12))
+        {
+            FlagDown();
+            f12_flag = true;
             File.AppendAllText(filePath_time, duration + "\n"); //時間の記録出力
         }
 
@@ -148,14 +162,7 @@ public class FaceController_gyro_airpress : MonoBehaviour
         {
             //1. 空気圧センサの動作確認用（連続角度変化，大域回転なし） /////////////////////////////////////////////////////////////////////////
             //局所回転角の取得
-            if (Math.Abs(force) < 15)
-            {
-                force_to_angle = 0.0f;
-            }
-            else
-            {
-                force_to_angle = 0.69f * force - 3.46f;       //y=ax+b
-            }
+            force_to_angle = 0.4f * force;       //y=ax : force100 / yaw40
             //平均値フィルタ
             for (int i = AVE_NUM - 1; i > 0; i--)
             {
@@ -173,18 +180,37 @@ public class FaceController_gyro_airpress : MonoBehaviour
             //ここで角度代入
             yaw_angle = -mod_force;
             //Debug.Log(yaw_angle);
-            //頭部制御部
-            //if (Math.Abs(force) > 80)
-            //{
-            //    if (force > 0)
-            //    {
-            //        rotation_angle -= rotation_speed;
-            //    }
-            //    else
-            //    {
-            //        rotation_angle += rotation_speed;
-            //    }
-            //}
+            
+            //大域回転部（一定速度＋フェード）
+            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                fade_in = true;
+                fade_out = false;
+            }
+            //FixedUpdeteでの回転処理開始
+            if (Input.GetKey(KeyCode.LeftArrow))
+            {
+                fixed_L_flag = true;
+            }
+            if (Input.GetKey(KeyCode.RightArrow))
+            {
+                fixed_R_flag = true;
+            }
+            //FixedUpdeteでの回転処理終了
+            if (Input.GetKeyUp(KeyCode.LeftArrow))
+            {
+                fixed_L_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+            if (Input.GetKeyUp(KeyCode.RightArrow))
+            {
+                fixed_R_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+
+            //姿勢の決定
             newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
             newAngle.z = 0;                                              //首回転角roll初期化
             newAngle.x = 0;                                              //首回転角pitch
@@ -225,15 +251,45 @@ public class FaceController_gyro_airpress : MonoBehaviour
             pre_yaw = yaw_angle;
             pitch_angle = pre_pitch * filter_gain + pitch_angle * (1 - filter_gain);
             pre_pitch = pitch_angle;
+            //if (Input.GetKey(KeyCode.LeftArrow))
+            //{
+            //    rotation_angle -= rotation_speed;
+            //}
+
+            //if (Input.GetKey(KeyCode.RightArrow))
+            //{
+            //    rotation_angle += rotation_speed;
+            //}
+            //大域回転部（一定速度＋フェード）
+            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
+            {
+                fade_in = true;
+                fade_out = false;
+            }
+            //FixedUpdeteでの回転処理開始
             if (Input.GetKey(KeyCode.LeftArrow))
             {
-                rotation_angle -= rotation_speed;
+                fixed_L_flag = true;
             }
-
             if (Input.GetKey(KeyCode.RightArrow))
             {
-                rotation_angle += rotation_speed;
+                fixed_R_flag = true;
             }
+            //FixedUpdeteでの回転処理終了
+            if (Input.GetKeyUp(KeyCode.LeftArrow))
+            {
+                fixed_L_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+            if (Input.GetKeyUp(KeyCode.RightArrow))
+            {
+                fixed_R_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+
+            //姿勢の決定
             newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
             newAngle.z = 0;                                              //首回転角roll初期化
             newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
@@ -396,15 +452,28 @@ public class FaceController_gyro_airpress : MonoBehaviour
             //頭部制御部
             if (Math.Abs(yaw_angle) > Math.Abs(move_angle))
             {
+                //閾値を超えたらフェードアニメーション
+                fade_in = true;
+                fade_out = false;
+                //回転開始
                 if (yaw_angle < 0)
                 {
-                    rotation_angle -= rotation_speed;
+                    fixed_L_flag = true;
                 }
                 else
                 {
-                    rotation_angle += rotation_speed;
+                    fixed_R_flag = true;
                 }
             }
+            else
+            {
+                fixed_L_flag = false;
+                fixed_R_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+
+            //姿勢の決定
             newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
             newAngle.z = 0;                                              //首回転角roll初期化
             newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
@@ -445,23 +514,31 @@ public class FaceController_gyro_airpress : MonoBehaviour
             pre_yaw = yaw_angle;
             pitch_angle = pre_pitch * filter_gain + pitch_angle * (1 - filter_gain);
             pre_pitch = pitch_angle;
-            //回転制御部（空気圧閾値）
+
+            //頭部制御部（空気圧閾値）
             if (Math.Abs(force) > t_force)
             {
-                rotate_flag = true;
+                //閾値を超えたらフェードアニメーション
+                fade_in = true;
+                fade_out = false;
+                //回転開始
                 if (force > 0)
                 {
-                    rotation_angle -= rotation_speed;
+                    fixed_L_flag = true;
                 }
                 else
                 {
-                    rotation_angle += rotation_speed;
+                    fixed_R_flag = true;
                 }
             }
             else
             {
-                rotate_flag = false;
+                fixed_L_flag = false;
+                fixed_R_flag = false;
+                fade_in = false;
+                fade_out = true;
             }
+
             newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
             newAngle.z = 0;                                              //首回転角roll初期化
             newAngle.x = pitch_angle + initial_angle_pitch;              //首回転角pitch
@@ -489,15 +566,15 @@ public class FaceController_gyro_airpress : MonoBehaviour
                 first_step_flag = true;
                 currentTime = 0f;
             }
-            //END 3.////////////////////////////////////////////////////////////////////////////
+            //END 6.////////////////////////////////////////////////////////////////////////////
         }
 
 
         if (f7_flag == true)
         {
-            //7. 空気圧センサヘッドトラッキング　y=ax　//////////////////////////
+            //7. 空気圧ヘッドトラッキング＋空気圧閾値　//////////////////////////
             //局所回転角の取得
-            force_to_angle = 0.3f * force;       //y=ax : force100 / yaw30
+            force_to_angle = 0.4f * force;       //y=ax : force100 / yaw40
             //平均値フィルタ
             for (int i = AVE_NUM - 1; i > 0; i--)
             {
@@ -514,11 +591,38 @@ public class FaceController_gyro_airpress : MonoBehaviour
             pre_force = mod_force;
             //ここで角度代入
             yaw_angle = -mod_force;
-            //
+            //Debug.Log(yaw_angle);
+
+            //頭部制御部
+            if (Math.Abs(yaw_angle) > Math.Abs(move_angle))
+            {
+                //閾値を超えたらフェードアニメーション
+                fade_in = true;
+                fade_out = false;
+                //回転開始
+                if (yaw_angle < 0)
+                {
+                    fixed_L_flag = true;
+                }
+                else
+                {
+                    fixed_R_flag = true;
+                }
+            }
+            else
+            {
+                fixed_L_flag = false;
+                fixed_R_flag = false;
+                fade_in = false;
+                fade_out = true;
+            }
+
+            //姿勢の決定
             newAngle.y = yaw_angle - initial_angle + rotation_angle;     //首回転角＋初期調整角度＋旋回角度
             newAngle.z = 0;                                              //首回転角roll初期化
             newAngle.x = 0;                                              //首回転角pitch
             VReye.gameObject.transform.localEulerAngles = newAngle;
+
             //歩行動作（長押し・短押し対応版）
             if (Input.GetKey(KeyCode.Space))
             {
@@ -542,13 +646,37 @@ public class FaceController_gyro_airpress : MonoBehaviour
                 first_step_flag = true;
                 currentTime = 0f;
             }
-            //END 3.////////////////////////////////////////////////////////////////////////////
+            //END 7.////////////////////////////////////////////////////////////////////////////
+        }
+    }
+
+    //フレームレート依存の動作をここで行う
+    void FixedUpdate()
+    {
+        if (fixed_L_flag == true)
+        {
+            rotation_angle -= rotation_speed;
+        }
+
+        if (fixed_R_flag == true)
+        {
+            rotation_angle += rotation_speed;
+        }
+
+        if (fixed_U_flag == true)
+        {
+            rotation_angle_pitch -= rotation_speed;
+        }
+
+        if (fixed_D_flag == true)
+        {
+            rotation_angle_pitch += rotation_speed;
         }
     }
 
     void FlagDown()
     {
-        f1_flag = f2_flag = f3_flag = f4_flag = f5_flag = f6_flag = f7_flag = false;
+        f1_flag = f2_flag = f3_flag = f4_flag = f5_flag = f6_flag = f7_flag = f12_flag = false;
     }
 
     //離散移動の関数/////////////////////////////////////////////////////////////

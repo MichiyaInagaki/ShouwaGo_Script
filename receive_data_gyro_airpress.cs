@@ -58,10 +58,13 @@ public class receive_data_gyro_airpress : MonoBehaviour
 
         if (cal_flag_1 == true)
         {
+            ////圧力の変化率
+            //D0 = (float)(P0 - P0_initial) / P0_initial;
+            //D1 = (float)(P1 - P1_initial) / P1_initial;
             //圧力の変化量
-            D0 = (float)(P0 - P0_initial) / P0_initial;
-            D1 = (float)(P1 - P1_initial) / P1_initial;
-            //Debug.Log("D0: " + D0 + " D1: " + D1);
+            D0 = (float)(P0 - P0_initial);
+            D1 = (float)(P1 - P1_initial);
+            Debug.Log("D0: " + D0 + " D1: " + D1);
             //左右最大ストローク
             if (D_right_max < (D1 - D0))
             {
@@ -90,10 +93,13 @@ public class receive_data_gyro_airpress : MonoBehaviour
         //値の計算///////////////////////////////////////////////////////////////////////////
         if (cal_flag_2 == true)
         {
+            ////圧力の変化率
+            //D0 = (float)(P0 - P0_initial) / P0_initial;
+            //D1 = (float)(P1 - P1_initial) / P1_initial;
             //圧力の変化量
-            D0 = (float)(P0 - P0_initial) / P0_initial;
-            D1 = (float)(P1 - P1_initial) / P1_initial;
-            //圧力の左右変化量
+            D0 = (float)(P0 - P0_initial);
+            D1 = (float)(P1 - P1_initial);
+            //圧力の左右変化率
             if (D1 > D0)
             {
                 f_val = (D1 - D0) / D_right_max * 100;   //%表示
@@ -102,7 +108,7 @@ public class receive_data_gyro_airpress : MonoBehaviour
             {
                 f_val = -(D0 - D1) / D_left_max * 100;
             }
-            //圧力の上下変化量
+            //圧力の上下変化率
             if (D0 > 0.0f && D1 > 0.0f && Math.Abs(D1 - D0) < D_up_max * 0.5f)  //左右のエアバッグ共に圧力がかかる
             {
                 f_val_ud = (D0 + D1) / D_up_max * 100;
